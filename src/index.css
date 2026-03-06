@@ -18,7 +18,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Playfair Display', Georgia, serif;
 }
 
 body {
@@ -227,6 +227,12 @@ header {
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.func-item.active {
+  border-color: var(--lime-yellow);
+  box-shadow: 0 0 8px rgba(212, 255, 0, 0.2);
 }
 .func-color {
   width: 16px;
@@ -328,4 +334,46 @@ input[type=range]::-webkit-slider-runnable-track {
 .empty-state svg {
   opacity: 0.5;
   margin-bottom: 1rem;
+}
+
+/* Keyboard Panel */
+.keyboard-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+}
+.keyboard-btn {
+  background: var(--indigo-light);
+  border: 1px solid var(--glass-border);
+  color: var(--white);
+  border-radius: 6px;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.95rem;
+  font-family: monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.keyboard-btn:hover {
+  background: var(--indigo-accent);
+  border-color: var(--lime-dim);
+}
+.keyboard-btn:active {
+  background: var(--lime-yellow);
+  color: var(--bg-color);
+}
+.action-btn {
+  background: var(--indigo-dark);
+}
+
+/* Plotly Modebar Controls Extender */
+.modebar-btn svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+.modebar-btn {
+  padding: 6px !important;
+}
+.modebar-group {
+  padding-left: 14px !important;
 }

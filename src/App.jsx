@@ -14,6 +14,15 @@ const COLORS = [
 
 const INSTRUMENTS = ['piano', 'violin', 'synth', 'flute'];
 
+const KEYBOARD_KEYS = [
+  '7', '8', '9', '/', 'C',
+  '4', '5', '6', '*', 'sin(',
+  '1', '2', '3', '-', 'cos(',
+  '0', '.', 'x', '+', 'tan(',
+  '^', '(', ')', 'y', 'log(',
+  'pi', 'e', 'abs(', 'sqrt(', '⌫'
+];
+
 function App() {
   const [functions, setFunctions] = useState([
     { id: 1, expr: 'sin(x)', color: COLORS[0], instrument: 'piano' },
@@ -22,6 +31,7 @@ function App() {
   const [is3D, setIs3D] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 100
+  const [activeFuncId, setActiveFuncId] = useState(1);
   const [volume, setVolume] = useState(80);
   const [plotData, setPlotData] = useState([]);
 
@@ -193,6 +203,22 @@ function App() {
     setFunctions(functions.map(f => f.id === id ? { ...f, [key]: value } : f));
   };
 
+  const handleKeyClick = (key) => {
+    if (!activeFuncId) return;
+    const func = functions.find(f => f.id === activeFuncId);
+    if (!func) return;
+
+    let newExpr = func.expr;
+    if (key === 'C') {
+      newExpr = '';
+    } else if (key === '⌫') {
+      newExpr = newExpr.slice(0, -1);
+    } else {
+      newExpr += key;
+    }
+    updateFunction(activeFuncId, 'expr', newExpr);
+  };
+
   return (
     <div className="app-container">
       <header>
@@ -214,7 +240,11 @@ function App() {
           <div className="panel">
             <h3 style={{ marginBottom: '1rem', color: 'var(--lime-yellow)' }}>Equations</h3>
             {functions.map(f => (
-              <div key={f.id} className="func-item">
+              <div 
+                key={f.id} 
+                className={`func-item ${activeFuncId === f.id ? 'active' : ''}`}
+                onClick={() => setActiveFuncId(f.id)}
+              >
                 <div className="func-color" style={{ backgroundColor: f.color }} />
                 <div className="func-details">
                   <input 
@@ -235,7 +265,10 @@ function App() {
                     ))}
                   </select>
                 </div>
-                <button className="btn btn-danger" onClick={() => removeFunction(f.id)}>
+                <button className="btn btn-danger" onClick={(e) => {
+                  e.stopPropagation();
+                  removeFunction(f.id);
+                }}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -243,6 +276,20 @@ function App() {
             <button className="btn btn-secondary w-full" style={{ width: '100%', marginTop: '1rem' }} onClick={addFunction}>
               <Plus size={16} /> Add Function
             </button>
+          </div>
+
+          <div className="panel" style={{ marginTop: '0.5rem' }}>
+            <div className="keyboard-grid">
+              {KEYBOARD_KEYS.map((key, i) => (
+                <button 
+                  key={i} 
+                  className={`keyboard-btn ${['C', '⌫'].includes(key) ? 'action-btn' : ''}`}
+                  onClick={() => handleKeyClick(key)}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="panel" style={{ marginTop: 'auto' }}>
