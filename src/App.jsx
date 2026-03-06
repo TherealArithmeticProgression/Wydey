@@ -12,7 +12,7 @@ const COLORS = [
   '#FF9F1C', // Orange
 ];
 
-const INSTRUMENTS = ['piano', 'violin', 'synth', 'flute'];
+const INSTRUMENTS = ['piano', 'violin', 'synth', 'flute', 'marimba', 'guitar', 'cello'];
 
 const KEYBOARD_KEYS = [
   '7', '8', '9', '/', 'C',
@@ -35,11 +35,18 @@ function App() {
   const [volume, setVolume] = useState(80);
   const [plotData, setPlotData] = useState([]);
 
+  const [playIntersections, setPlayIntersections] = useState(true);
+
   const animationRef = useRef(null);
   const progressRef = useRef(0);
   const timeoutRef = useRef(null);
   const isPlayingRef = useRef(isPlaying);
   const functionsRef = useRef(functions);
+  const playIntersectionsRef = useRef(playIntersections);
+
+  useEffect(() => {
+    playIntersectionsRef.current = playIntersections;
+  }, [playIntersections]);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -155,6 +162,23 @@ function App() {
       } catch (e) { }
     });
 
+    if (playIntersectionsRef.current && Object.keys(yVals).length > 1) {
+      const ids = Object.keys(yVals);
+      let hitIntersection = false;
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          if (Math.abs(yVals[ids[i]] - yVals[ids[j]]) < 0.3) {
+            hitIntersection = true;
+            break;
+          }
+        }
+        if (hitIntersection) break;
+      }
+      if (hitIntersection) {
+        engine.playIntersection();
+      }
+    }
+
     engine.playFrame(yVals, "16n");
 
     progressRef.current += 1; // speed
@@ -226,6 +250,13 @@ function App() {
           <Hexagon /> Wydey
         </div>
         <div>
+          <button 
+            className={`btn ${playIntersections ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setPlayIntersections(!playIntersections)}
+            style={{ marginRight: '1rem' }}
+          >
+            {playIntersections ? 'Sound: Intersections On' : 'Sound: Intersections Off'}
+          </button>
           <button 
             className={`btn ${is3D ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setIs3D(!is3D)}

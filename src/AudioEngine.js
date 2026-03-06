@@ -5,6 +5,12 @@ class AudioEngine {
     this.synths = {};
     this.masterVolume = new Tone.Volume(-10).toDestination();
     this.isInitialized = false;
+
+    // A specific high-pitched ping for intersections
+    this.intersectionSynth = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.3 }
+    }).connect(this.masterVolume);
   }
 
   async init() {
@@ -37,6 +43,31 @@ class AudioEngine {
           envelope: { attack: 0.1, decay: 0.2, sustain: 0.9, release: 0.5 }
         });
         break;
+      case 'marimba':
+        synth = new Tone.FMSynth({
+          harmonicity: 3.01,
+          modulationIndex: 14,
+          oscillator: { type: "triangle" },
+          envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 },
+          modulation: { type: "square" },
+          modulationEnvelope: { attack: 0.002, decay: 0.2, sustain: 0, release: 0.2 }
+        });
+        break;
+      case 'guitar':
+        synth = new Tone.PluckSynth({
+          attackNoise: 1,
+          dampening: 4000,
+          resonance: 0.98
+        });
+        break;
+      case 'cello':
+        synth = new Tone.Synth({
+          oscillator: { type: 'pwm', modulationFrequency: 0.2 },
+          envelope: { attack: 0.5, decay: 0.1, sustain: 0.8, release: 2 }
+        });
+        const celloVibrato = new Tone.Vibrato(4, 0.05).connect(this.masterVolume);
+        synth.connect(celloVibrato);
+        return synth;
       case 'synth':
       default:
         synth = new Tone.Synth({
@@ -57,6 +88,11 @@ class AudioEngine {
     functions.forEach(func => {
       this.synths[func.id] = this.createInstrument(func.instrument);
     });
+  }
+
+  playIntersection() {
+    if (!this.isInitialized) return;
+    this.intersectionSynth.triggerAttackRelease("C6", "16n");
   }
 
   // Play a combination of notes based on the current Y values of functions
