@@ -223,7 +223,7 @@ function App() {
     <div className="app-container">
       <header>
         <div className="logo">
-          <Hexagon /> Weedei
+          <Hexagon /> Wydey
         </div>
         <div>
           <button 
