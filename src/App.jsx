@@ -12,7 +12,7 @@ const COLORS = [
   '#FF9F1C', // Orange
 ];
 
-const INSTRUMENTS = ['piano', 'violin', 'synth', 'flute', 'marimba', 'guitar', 'cello'];
+// Instruments removed
 
 const KEYBOARD_KEYS = [
   '7', '8', '9', '/', 'C',
@@ -25,8 +25,8 @@ const KEYBOARD_KEYS = [
 
 function App() {
   const [functions, setFunctions] = useState([
-    { id: 1, expr: 'sin(x)', color: COLORS[0], instrument: 'piano' },
-    { id: 2, expr: 'cos(x)', color: COLORS[1], instrument: 'violin' }
+    { id: 1, expr: 'sin(x)', color: COLORS[0], frequency: 440 },
+    { id: 2, expr: 'cos(x)', color: COLORS[1], frequency: 880 }
   ]);
   const [is3D, setIs3D] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -35,18 +35,11 @@ function App() {
   const [volume, setVolume] = useState(80);
   const [plotData, setPlotData] = useState([]);
 
-  const [playIntersections, setPlayIntersections] = useState(true);
-
   const animationRef = useRef(null);
   const progressRef = useRef(0);
   const timeoutRef = useRef(null);
   const isPlayingRef = useRef(isPlaying);
   const functionsRef = useRef(functions);
-  const playIntersectionsRef = useRef(playIntersections);
-
-  useEffect(() => {
-    playIntersectionsRef.current = playIntersections;
-  }, [playIntersections]);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -130,12 +123,6 @@ function App() {
 
   // Audio synths Setup
   useEffect(() => {
-    let oldSynths = Object.assign({}, engine.synths);
-    
-    // Create new synths, avoiding rebuilding ones that haven't changed instrument types if possible
-    functions.forEach(f => {
-      engine.createInstrument(f.instrument);
-    });
     engine.setupTracks(functions);
   }, [functions]);
 
@@ -151,23 +138,23 @@ function App() {
     // progress is 0 to 100 -> x is -10 + (20 * progress / 100)
     const x = -10 + (20 * progressRef.current / 100);
 
-    // Get current Y values for audio
-    const yVals = {};
+    // Get current values for audio
+    const frameData = {};
     functionsRef.current.forEach(f => {
       try {
         const y = evaluate(f.expr, { x, y: 0 });
         if (Number.isFinite(y)) {
-          yVals[f.id] = y;
+          frameData[f.id] = { y, frequency: f.frequency };
         }
       } catch (e) { }
     });
 
-    if (playIntersectionsRef.current && Object.keys(yVals).length > 1) {
-      const ids = Object.keys(yVals);
+    if (Object.keys(frameData).length > 1) {
+      const ids = Object.keys(frameData);
       let hitIntersection = false;
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
-          if (Math.abs(yVals[ids[i]] - yVals[ids[j]]) < 0.3) {
+          if (Math.abs(frameData[ids[i]].y - frameData[ids[j]].y) < 0.3) {
             hitIntersection = true;
             break;
           }
@@ -179,7 +166,7 @@ function App() {
       }
     }
 
-    engine.playFrame(yVals, "16n");
+    engine.playFrame(frameData, "16n");
 
     progressRef.current += 1; // speed
     if (progressRef.current > 100) {
@@ -215,7 +202,7 @@ function App() {
       id: nextId,
       expr: 'x^2',
       color: COLORS[functions.length % COLORS.length],
-      instrument: 'synth'
+      frequency: 440
     }]);
   };
 
@@ -250,13 +237,7 @@ function App() {
           <Hexagon /> Wydey
         </div>
         <div>
-          <button 
-            className={`btn ${playIntersections ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setPlayIntersections(!playIntersections)}
-            style={{ marginRight: '1rem' }}
-          >
-            {playIntersections ? 'Sound: Intersections On' : 'Sound: Intersections Off'}
-          </button>
+
           <button 
             className={`btn ${is3D ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setIs3D(!is3D)}
@@ -284,17 +265,20 @@ function App() {
                     onChange={e => updateFunction(f.id, 'expr', e.target.value)}
                     style={{ background: 'transparent', border: 'none', color: 'white', fontFamily: 'monospace', fontSize: '1.1rem', outline: 'none', width: '100%' }}
                   />
-                  <select 
-                    value={f.instrument} 
-                    onChange={e => updateFunction(f.id, 'instrument', e.target.value)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--lime-yellow)', fontSize: '0.8rem', padding: '0', cursor: 'pointer', outline: 'none' }}
-                  >
-                    {INSTRUMENTS.map(inst => (
-                      <option key={inst} value={inst} style={{ background: 'var(--indigo-dark)' }}>
-                        {inst.charAt(0).toUpperCase() + inst.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <input 
+                        type="number" 
+                        value={f.frequency}
+                        onChange={e => updateFunction(f.id, 'frequency', Number(e.target.value))}
+                        style={{ background: 'transparent', border: '1px solid var(--lime-yellow)', borderRadius: '4px', color: 'var(--lime-yellow)', fontSize: '0.8rem', padding: '2px 4px', outline: 'none', width: '60px' }}
+                      />
+                      <span style={{ fontSize: '0.8rem', color: 'var(--lime-yellow)' }}>Hz</span>
+                    </div>
+                    { (f.frequency < 200 || f.frequency > 20000) && (
+                      <span style={{ color: '#FF4D85', fontSize: '0.7rem', marginTop: '4px' }}>Error: 200-20k Hz</span>
+                    )}
+                  </div>
                 </div>
                 <button className="btn btn-danger" onClick={(e) => {
                   e.stopPropagation();
