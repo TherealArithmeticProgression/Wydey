@@ -12,7 +12,7 @@ const COLORS = [
   '#FF9F1C', // Orange
 ];
 
-// Instruments removed
+const INSTRUMENTS = ['electric', 'bass', 'brass', 'xylophone', 'organ', 'kalimba', 'synth'];
 
 const KEYBOARD_KEYS = [
   '7', '8', '9', '/', 'C',
@@ -25,8 +25,8 @@ const KEYBOARD_KEYS = [
 
 function App() {
   const [functions, setFunctions] = useState([
-    { id: 1, expr: 'sin(x)', color: COLORS[0], frequency: 440 },
-    { id: 2, expr: 'cos(x)', color: COLORS[1], frequency: 880 }
+    { id: 1, expr: 'sin(x)', color: COLORS[0], instrument: 'electric' },
+    { id: 2, expr: 'cos(x)', color: COLORS[1], instrument: 'bass' }
   ]);
   const [is3D, setIs3D] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -138,23 +138,23 @@ function App() {
     // progress is 0 to 100 -> x is -10 + (20 * progress / 100)
     const x = -10 + (20 * progressRef.current / 100);
 
-    // Get current values for audio
-    const frameData = {};
+    // Get current Y values for audio
+    const yVals = {};
     functionsRef.current.forEach(f => {
       try {
         const y = evaluate(f.expr, { x, y: 0 });
         if (Number.isFinite(y)) {
-          frameData[f.id] = { y, frequency: f.frequency };
+          yVals[f.id] = y;
         }
       } catch (e) { }
     });
 
-    if (Object.keys(frameData).length > 1) {
-      const ids = Object.keys(frameData);
+    if (Object.keys(yVals).length > 1) {
+      const ids = Object.keys(yVals);
       let hitIntersection = false;
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
-          if (Math.abs(frameData[ids[i]].y - frameData[ids[j]].y) < 0.3) {
+          if (Math.abs(yVals[ids[i]] - yVals[ids[j]]) < 0.3) {
             hitIntersection = true;
             break;
           }
@@ -166,7 +166,7 @@ function App() {
       }
     }
 
-    engine.playFrame(frameData, "16n");
+    engine.playFrame(yVals, "16n");
 
     progressRef.current += 1; // speed
     if (progressRef.current > 100) {
@@ -202,7 +202,7 @@ function App() {
       id: nextId,
       expr: 'x^2',
       color: COLORS[functions.length % COLORS.length],
-      frequency: 440
+      instrument: 'synth'
     }]);
   };
 
@@ -265,20 +265,17 @@ function App() {
                     onChange={e => updateFunction(f.id, 'expr', e.target.value)}
                     style={{ background: 'transparent', border: 'none', color: 'white', fontFamily: 'monospace', fontSize: '1.1rem', outline: 'none', width: '100%' }}
                   />
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <input 
-                        type="number" 
-                        value={f.frequency}
-                        onChange={e => updateFunction(f.id, 'frequency', Number(e.target.value))}
-                        style={{ background: 'transparent', border: '1px solid var(--lime-yellow)', borderRadius: '4px', color: 'var(--lime-yellow)', fontSize: '0.8rem', padding: '2px 4px', outline: 'none', width: '60px' }}
-                      />
-                      <span style={{ fontSize: '0.8rem', color: 'var(--lime-yellow)' }}>Hz</span>
-                    </div>
-                    { (f.frequency < 200 || f.frequency > 20000) && (
-                      <span style={{ color: '#FF4D85', fontSize: '0.7rem', marginTop: '4px' }}>Error: 200-20k Hz</span>
-                    )}
-                  </div>
+                  <select 
+                    value={f.instrument} 
+                    onChange={e => updateFunction(f.id, 'instrument', e.target.value)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--lime-yellow)', fontSize: '0.8rem', padding: '0', cursor: 'pointer', outline: 'none' }}
+                  >
+                    {INSTRUMENTS.map(inst => (
+                      <option key={inst} value={inst} style={{ background: 'var(--indigo-dark)' }}>
+                        {inst.charAt(0).toUpperCase() + inst.slice(1)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <button className="btn btn-danger" onClick={(e) => {
                   e.stopPropagation();
