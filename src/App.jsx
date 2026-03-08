@@ -15,18 +15,20 @@ const COLORS = [
 const INSTRUMENTS = ['electric', 'bass', 'brass', 'xylophone', 'organ', 'kalimba', 'synth'];
 
 const KEYBOARD_KEYS = [
-  '7', '8', '9', '/', 'C',
-  '4', '5', '6', '*', 'sin(',
-  '1', '2', '3', '-', 'cos(',
-  '0', '.', 'x', '+', 'tan(',
-  '^', '(', ')', 'y', 'log(',
-  'pi', 'e', 'abs(', 'sqrt(', '⌫'
+  '7', '8', '9', '/', 'C', '⌫',
+  '4', '5', '6', '*', 'sin(', 'cos(',
+  '1', '2', '3', '-', 'tan(', 'log(',
+  '0', '.', '=', '+', 'abs(', 'sqrt(',
+  'x', 'y', 'z', '^', 'pi', 'e',
+  '(', ')', '<', '>', '<=', '>='
 ];
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
   const [functions, setFunctions] = useState([
-    { id: 1, expr: 'sin(x)', color: COLORS[0], instrument: 'electric' },
-    { id: 2, expr: 'cos(x)', color: COLORS[1], instrument: 'bass' }
+    { id: 1, expr: 'y = sin(x)', color: COLORS[0], instrument: 'electric' },
+    { id: 2, expr: 'y = cos(x)', color: COLORS[1], instrument: 'bass' }
   ]);
   const [is3D, setIs3D] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,6 +44,13 @@ function App() {
   const functionsRef = useRef(functions);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
@@ -55,22 +64,31 @@ function App() {
       if (is3D) {
         // Generate surface data
         const newPlotData = functions.map(f => {
+          let lhs = 'z';
+          let rhs = f.expr;
+          if (f.expr.includes('=')) {
+            const parts = f.expr.split('=');
+            lhs = parts[0].trim().toLowerCase();
+            rhs = parts[1].trim();
+          }
+
           const xValues = [];
           const yValues = [];
           const zValues = [];
-          // grid from -10 to 10
-          for (let x = -10; x <= 10; x += 0.5) {
+          // wider grid from -30 to 30
+          for (let x = -30; x <= 30; x += 1) {
             xValues.push(x);
           }
-          for (let y = -10; y <= 10; y += 0.5) {
+          for (let y = -30; y <= 30; y += 1) {
             yValues.push(y);
           }
-          for (let y = -10; y <= 10; y += 0.5) {
+          for (let y = -30; y <= 30; y += 1) {
             const zRow = [];
-            for (let x = -10; x <= 10; x += 0.5) {
-              try {
-                const z = evaluate(f.expr, { x, y });
-                zRow.push(Number.isFinite(z) ? z : null);
+            for (let x = -30; x <= 30; x += 1) {
+               try {
+                let scope = {x, y, z: 0};
+                const val = evaluate(rhs, scope);
+                zRow.push(Number.isFinite(val) ? val : null);
               } catch (e) {
                 zRow.push(null);
               }
@@ -90,24 +108,48 @@ function App() {
         });
         setPlotData(newPlotData);
       } else {
-        // Generate line data
-        const xValues = [];
-        for (let x = -10; x <= 10; x += 0.1) {
-          xValues.push(x);
+        // Generate line data with larger range
+        const tValues = [];
+        for (let t = -100; t <= 100; t += 0.2) {
+          tValues.push(t);
         }
 
         const newPlotData = functions.map(f => {
-          const yValues = xValues.map(x => {
-            try {
-              const y = evaluate(f.expr, { x });
-              return Number.isFinite(y) ? y : null;
-            } catch (e) {
-              return null;
-            }
-          });
+          let lhs = 'y';
+          let rhs = f.expr;
+          if (f.expr.includes('=')) {
+            const parts = f.expr.split('=');
+            lhs = parts[0].trim().toLowerCase();
+            rhs = parts[1].trim();
+          }
+          let xVals = [];
+          let yVals = [];
+
+          if (lhs === 'x') {
+            yVals = tValues;
+            xVals = tValues.map(val => {
+              try {
+                const xVal = evaluate(rhs, { y: val });
+                return Number.isFinite(xVal) ? xVal : null;
+              } catch (e) {
+                return null;
+              }
+            });
+          } else {
+            // default to y = f(x)
+            xVals = tValues;
+            yVals = tValues.map(val => {
+              try {
+                const yVal = evaluate(rhs, { x: val });
+                return Number.isFinite(yVal) ? yVal : null;
+              } catch (e) {
+                return null;
+              }
+            });
+          }
           return {
-            x: xValues,
-            y: yValues,
+            x: xVals,
+            y: yVals,
             type: 'scatter',
             mode: 'lines',
             name: f.expr,
@@ -134,17 +176,30 @@ function App() {
   const stepAudio = useCallback(() => {
     if (!isPlayingRef.current) return;
 
-    // sweep x from -10 to 10
-    // progress is 0 to 100 -> x is -10 + (20 * progress / 100)
-    const x = -10 + (20 * progressRef.current / 100);
+    // sweep t from -100 to 100 to match the extended graph range
+    // progress is 0 to 100 -> t is -100 + (200 * progress / 100)
+    const t = -100 + (200 * progressRef.current / 100);
 
     // Get current Y values for audio
     const yVals = {};
     functionsRef.current.forEach(f => {
+      let lhs = 'y';
+      let rhs = f.expr;
+      if (f.expr.includes('=')) {
+        const parts = f.expr.split('=');
+        lhs = parts[0].trim().toLowerCase();
+        rhs = parts[1].trim();
+      }
+
       try {
-        const y = evaluate(f.expr, { x, y: 0 });
-        if (Number.isFinite(y)) {
-          yVals[f.id] = y;
+        let val;
+        if (lhs === 'x') {
+          val = evaluate(rhs, { y: t });
+        } else {
+          val = evaluate(rhs, { x: t, y: 0 });
+        }
+        if (Number.isFinite(val)) {
+          yVals[f.id] = val;
         }
       } catch (e) { }
     });
@@ -200,7 +255,7 @@ function App() {
     const nextId = functions.length > 0 ? Math.max(...functions.map(f => f.id)) + 1 : 1;
     setFunctions([...functions, {
       id: nextId,
-      expr: 'x^2',
+      expr: 'y = x^2',
       color: COLORS[functions.length % COLORS.length],
       instrument: 'synth'
     }]);
@@ -229,6 +284,17 @@ function App() {
     }
     updateFunction(activeFuncId, 'expr', newExpr);
   };
+
+  if (isLoading) {
+    return (
+      <div className="app-container" style={{ alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
+        <div className="logo" style={{ fontSize: '3rem', transform: 'scale(1.5)' }}>
+          <Hexagon size={64} style={{ animation: 'spin 2s linear infinite' }} />
+          Wydey
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">

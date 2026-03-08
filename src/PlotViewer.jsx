@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Plot from 'react-plotly.js';
 
 const PlotViewer = ({ data, layout, is3D }) => {
+  const [dragMode, setDragMode] = useState('zoom');
+  const [sceneDragMode, setSceneDragMode] = useState('orbit');
+
+  const handleDoubleClick = () => {
+    if (is3D) {
+      setSceneDragMode(prev => prev === 'pan' ? 'orbit' : 'pan');
+    } else {
+      setDragMode(prev => prev === 'pan' ? 'zoom' : 'pan');
+    }
+  };
+
   const mergedLayout = {
     ...layout,
     autosize: true,
@@ -11,6 +22,7 @@ const PlotViewer = ({ data, layout, is3D }) => {
       color: '#FFFFFF'
     },
     ...(!is3D && {
+      dragmode: dragMode,
       xaxis: {
         gridcolor: 'rgba(255,255,255,0.1)',
         zerolinecolor: 'rgba(255,255,255,0.3)',
@@ -22,6 +34,7 @@ const PlotViewer = ({ data, layout, is3D }) => {
     }),
     ...(is3D && {
       scene: {
+        dragmode: sceneDragMode,
         xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
         yaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
         zaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
@@ -38,8 +51,9 @@ const PlotViewer = ({ data, layout, is3D }) => {
         data={data}
         layout={mergedLayout}
         useResizeHandler={true}
+        onDoubleClick={handleDoubleClick}
         style={{ width: '100%', height: '100%' }}
-        config={{ displayModeBar: true, responsive: true }}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: false }}
       />
     </div>
   );
