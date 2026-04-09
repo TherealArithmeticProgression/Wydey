@@ -197,6 +197,7 @@ function App() {
   const eyesClosedRef = useRef(eyesClosed);
   const walkXRef = useRef(walkX);
   const isWalkingRef = useRef(isWalking);
+  const isRecordingRef = useRef(false);
 
   // Effective range
   const effectiveRange = {
@@ -582,7 +583,22 @@ function App() {
           const tickDelta = 0.1;
           const sweepDuration = 10; 
           progressRef.current += (tickDelta / sweepDuration) * playbackSpeed * 100;
-          if (progressRef.current > 100) progressRef.current = 0;
+          if (progressRef.current >= 100) {
+            progressRef.current = 0;
+            if (isRecordingRef.current) {
+              // Auto-stop and download at the end of the pass
+              setTimeout(async () => {
+                setIsPlaying(false);
+                isRecordingRef.current = false;
+                const url = await engine.stopRecording();
+                const a = document.createElement("a");
+                a.download = "wydey-graph.webm";
+                a.href = url;
+                a.click();
+                showToast("Audio saved successfully.");
+              }, 50);
+            }
+          }
 
           // Defer the React UI render to match the exact moment the sound hits
           engine.Tone?.Draw?.schedule?.(() => {
@@ -635,6 +651,19 @@ function App() {
       engine.stopPlayback();
     }
   }, [isPlaying, playbackSpeed]);
+
+  const handleSaveAudio = async () => {
+    if (!engine.isInitialized) await engine.init();
+    if (isRecordingRef.current) return;
+    
+    isRecordingRef.current = true;
+    progressRef.current = 0;
+    setProgress(0);
+    
+    engine.startRecording();
+    setIsPlaying(true);
+    speakButton("Recording audio pass... please wait.");
+  };
 
   // ======================== Function CRUD ========================
   const addFunction = () => {
@@ -937,6 +966,18 @@ function App() {
                 aria-label={`Volume: ${volume}%`} />
               <span className="volume-label">{volume}%</span>
             </div>
+          </div>
+
+          {/* Export Audio */}
+          <div className="panel" style={{ marginTop: '0.5rem' }}>
+            <button 
+              className={`btn ${isRecordingRef.current ? 'btn-danger' : 'btn-primary'}`} 
+              style={{ width: '100%' }}
+              onClick={handleSaveAudio}
+              disabled={isRecordingRef.current}
+            >
+              {isRecordingRef.current ? 'Recording...' : 'Save Audio to Device'}
+            </button>
           </div>
         </aside>
 

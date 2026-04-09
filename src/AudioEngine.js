@@ -21,8 +21,12 @@ class AudioEngine {
     this.trackIndex = {};  // maps function id -> track number for octave separation
     this.isInitialized = false;
 
-    // Signal chain: synths -> trackGain -> trackPanner -> masterReverb -> masterVolume -> destination
+    // Recorder for downloading capability
+    this.recorder = new Tone.Recorder();
+
+    // Signal chain: synths -> trackGain -> trackPanner -> masterReverb -> masterVolume -> recorder -> destination
     this.masterVolume = new Tone.Volume(-10).toDestination();
+    this.masterVolume.connect(this.recorder);
 
     // Warm reverb to remove mechanical harshness
     this.masterReverb = new Tone.Reverb({
@@ -115,6 +119,15 @@ class AudioEngine {
     Tone.Transport.stop();
     Tone.Transport.cancel();
     this.stop();
+  }
+
+  startRecording() {
+    return this.recorder.start();
+  }
+
+  async stopRecording() {
+    const recording = await this.recorder.stop();
+    return URL.createObjectURL(recording);
   }
 
   createInstrument(type) {
