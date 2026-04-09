@@ -12,6 +12,26 @@ import { analyzeFunction, classifyPoint, describeGraph, evalAt, getRHS } from '.
 
 const COLORS = ['#000000', '#555555', '#888888', '#AAAAAA', '#333333'];
 
+const WydeyLogo = ({ size = 24 }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 100 100" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="4" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
+    <polygon points="50,5 93,25 93,75 50,95 7,75 7,25" />
+    <polygon points="50,20 76,35 76,65 50,80 24,65 24,35" strokeDasharray="5 5" />
+    <circle cx="50" cy="50" r="8" />
+    <line x1="50" y1="5" x2="50" y2="95" />
+    <line x1="7" y1="25" x2="93" y2="75" />
+    <line x1="7" y1="75" x2="93" y2="25" />
+  </svg>
+);
+
 const INSTRUMENTS = ['piano', 'electric', 'bass', 'brass', 'xylophone', 'organ', 'kalimba', 'synth'];
 
 const INSTRUMENT_ICONS = {
@@ -671,7 +691,7 @@ function App() {
     return (
       <div className="loading-screen" role="status" aria-label="Loading Wydey">
         <div className="logo-large">
-          <Hexagon size={56} />
+          <WydeyLogo size={56} />
           Wydey
         </div>
         <p className="tagline">See Sound · Hear Math</p>
@@ -698,7 +718,7 @@ function App() {
             onClick={() => speakButton('Wydey')}
             role="button" aria-label="Wydey home" tabIndex={0}
           >
-            <Hexagon size={24} /> Wydey
+            <WydeyLogo size={24} /> Wydey
           </div>
           <button
             className={`btn ${is3D ? 'btn-primary' : 'btn-secondary'}`}
