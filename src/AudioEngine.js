@@ -98,6 +98,10 @@ class AudioEngine {
     this.isInitialized = true;
   }
 
+  now() {
+    return Tone.now();
+  }
+
   createInstrument(type) {
     let synth;
     switch (type) {
@@ -315,7 +319,7 @@ class AudioEngine {
   /**
    * Play a frame during continuous playback.
    */
-  playFrame(yValues, derivativeValues = {}, duration = "8n", x = 0, xMin = -10, xMax = 10) {
+  playFrame(yValues, derivativeValues = {}, duration = "8n", x = 0, xMin = -10, xMax = 10, scheduleTime = undefined) {
     if (!this.isInitialized) return;
 
     Object.keys(yValues).forEach(id => {
@@ -340,7 +344,7 @@ class AudioEngine {
 
         try {
           if (entry.synth.triggerAttackRelease) {
-            entry.synth.triggerAttackRelease(freq, duration);
+            entry.synth.triggerAttackRelease(freq, duration, scheduleTime);
           }
         } catch (e) {}
       }

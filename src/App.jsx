@@ -550,8 +550,20 @@ function App() {
     return undefined;
   }
 
+  const lastTimeRef = useRef(performance.now());
+
   const stepAudio = useCallback(() => {
     if (!isPlayingRef.current) return;
+
+    const now = performance.now();
+    const dt = (now - lastTimeRef.current) / 1000;
+    lastTimeRef.current = now;
+
+    // Step equivalent to the old 100ms pacing, but using smooth real time
+    progressRef.current += (dt / 0.1) * playbackSpeed;
+    if (progressRef.current > 100) progressRef.current = 0;
+    setProgress(progressRef.current);
+
     const r = effectiveRangeRef.current;
     const range = r.max - r.min;
     const t = r.min + (range * progressRef.current / 100);
@@ -587,7 +599,6 @@ function App() {
       }
     }
 
-    // Landmark detection during playback
     functionsRef.current.forEach(f => {
       const rhs = getRHS(f.expr);
       const pt = classifyPoint(rhs, t, 0.2);
@@ -596,25 +607,21 @@ function App() {
       }
     });
 
-    engine.playFrame(yVals, derivVals, "16n", t, r.min, r.max);
+    const scheduleTime = engine.now() + 0.05; // 50ms lookahead
+    engine.playFrame(yVals, derivVals, "16n", t, r.min, r.max, scheduleTime);
 
-    progressRef.current += playbackSpeed;
-    if (progressRef.current > 100) progressRef.current = 0;
-    setProgress(progressRef.current);
-
-    timeoutRef.current = setTimeout(() => {
-      if (isPlayingRef.current) stepAudio();
-    }, 100);
+    timeoutRef.current = requestAnimationFrame(stepAudio);
   }, [playbackSpeed]);
 
   useEffect(() => {
     if (isPlaying) {
+      lastTimeRef.current = performance.now();
       engine.init().then(() => stepAudio());
     } else {
       engine.stop();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) cancelAnimationFrame(timeoutRef.current);
     }
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+    return () => { if (timeoutRef.current) cancelAnimationFrame(timeoutRef.current); };
   }, [isPlaying, stepAudio]);
 
   // ======================== Function CRUD ========================
@@ -932,34 +939,18 @@ function App() {
             ) : (
               <>
                 <PlotViewer
-                  data={[...plotData, ...walkingMarkerData]}
+                  data={plotData}
                   is3D={is3D}
                   layout={{ title: '' }}
+                  functions={functions}
+                  walkX={walkX}
+                  isWalking={isWalking}
+                  activeFuncId={activeFuncId}
+                  progress={progress}
+                  isPlaying={isPlaying}
+                  rangeMin={effectiveRange.min}
+                  rangeMax={effectiveRange.max}
                 />
-                {/* Playback scrubber line */}
-                {!is3D && isPlaying && (
-                  <div
-                    style={{
-                      position: 'absolute', top: 30, bottom: 50,
-                      left: `calc(50px + (100% - 80px) * (${progress} / 100))`,
-                      width: '2px', backgroundColor: 'rgba(0,0,0,0.5)',
-                      zIndex: 10, pointerEvents: 'none',
-                      transition: 'left 0.1s linear'
-                    }} aria-hidden="true"
-                  />
-                )}
-                {/* Walking position line */}
-                {!is3D && isWalking && (
-                  <div
-                    style={{
-                      position: 'absolute', top: 30, bottom: 50,
-                      left: `calc(50px + (100% - 80px) * (${(walkX - effectiveRange.min) / (effectiveRange.max - effectiveRange.min)}))`,
-                      width: '2px', backgroundColor: '#000000',
-                      zIndex: 11, pointerEvents: 'none',
-                      transition: 'left 0.05s linear'
-                    }} aria-hidden="true"
-                  />
-                )}
               </>
             )}
           </div>
