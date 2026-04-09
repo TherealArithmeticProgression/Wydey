@@ -10,7 +10,7 @@ import PlotViewer from './PlotViewer';
 import engine from './AudioEngine';
 import { analyzeFunction, classifyPoint, describeGraph, evalAt, getRHS } from './GraphAnalyzer';
 
-const COLORS = ['#000000', '#555555', '#888888', '#AAAAAA', '#333333'];
+const COLORS = ['#00A3FF', '#FF0055', '#00D859', '#AA00FF', '#FF6A00', '#FFD000'];
 
 const WydeyLogo = ({ size = 24 }) => (
   <svg 
