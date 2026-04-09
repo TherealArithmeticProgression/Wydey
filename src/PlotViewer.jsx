@@ -1,11 +1,26 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import PlotlyPlot from 'react-plotly.js';
-import { Mafs, Coordinates, Plot, Theme, Point, Line } from 'mafs';
+import { Mafs, Coordinates, Plot, Theme, Point } from 'mafs';
 import { compile } from 'mathjs';
 import 'mafs/core.css';
-import 'mafs/font.css';
+// Purposely removed mafs/font.css to enforce sans-serif website theme
 
 const PlotViewer = ({ functions, is3D, data, layout, walkX, isWalking, activeFuncId, progress, isPlaying, rangeMin, rangeMax }) => {
+  const containerRef = useRef(null);
+  const [containerHeight, setContainerHeight] = useState(500);
+
+  // ResizeObserver to ensure Mafs perfectly fills the height of our graph-container
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        setContainerHeight(entry.contentRect.height);
+      }
+    });
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const compiledMafsFuncs = useMemo(() => {
     return functions.map(f => {
       let lhs = 'y', rhs = f.expr;
@@ -20,6 +35,9 @@ const PlotViewer = ({ functions, is3D, data, layout, walkX, isWalking, activeFun
           ...f,
           lhs,
           evaluate: (val) => {
+            // Constrain plot lines exactly to the custom user range
+            if (val < rangeMin || val > rangeMax) return NaN;
+            
             try {
               const scope = lhs === 'x' ? { y: val } : { x: val };
               const result = compiled.evaluate(scope);
@@ -33,7 +51,7 @@ const PlotViewer = ({ functions, is3D, data, layout, walkX, isWalking, activeFun
         return { ...f, lhs, evaluate: () => NaN };
       }
     });
-  }, [functions]);
+  }, [functions, rangeMin, rangeMax]);
 
   if (is3D) {
     const mergedLayout = {
@@ -72,11 +90,17 @@ const PlotViewer = ({ functions, is3D, data, layout, walkX, isWalking, activeFun
   const playheadX = rangeMin + ((rangeMax - rangeMin) * (progress || 0) / 100);
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <Mafs zoom={{ min: 0.1, max: 20 }} pan={true} viewBox={{ x: [rangeMin, rangeMax], y: [-10, 10] }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      <Mafs 
+        height={containerHeight}
+        zoom={{ min: 0.1, max: 20 }} 
+        pan={true} 
+        viewBox={{ x: [rangeMin, rangeMax], y: [-10, 10] }}
+        preserveAspectRatio={false}
+      >
         <Coordinates.Cartesian />
         
-        {/* Render all math functions */}
+        {/* Render all math functions mapped cleanly to bounds */}
         {compiledMafsFuncs.map(f => {
           if (f.lhs === 'x') {
             return <Plot.OfY key={f.id} x={f.evaluate} color={f.color} />;

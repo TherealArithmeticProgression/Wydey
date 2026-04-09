@@ -1051,3 +1051,24 @@ input[type=range]::-moz-range-track {
   line-height: 1;
   flex-shrink: 0;
 }
+
+/* ===== MAFS OVERRIDES ===== */
+.MafsView {
+  --mafs-bg: var(--white) !important;
+  --mafs-fg: var(--black) !important;
+  --mafs-origin-color: var(--black) !important;
+  --mafs-grid-line-color: rgba(0,0,0,0.1) !important;
+  --mafs-font-math: var(--font-sans) !important;
+  background: var(--mafs-bg) !important;
+  font-family: var(--font-sans) !important;
+  color: var(--mafs-fg) !important;
+}
+
+.MafsView text {
+  font-family: var(--font-sans) !important;
+  fill: var(--mafs-fg) !important;
+}
+
+.MafsView line, .MafsView path {
+  transition: opacity 0.1s ease;
+}
