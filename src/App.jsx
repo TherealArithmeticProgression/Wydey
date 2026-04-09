@@ -5,7 +5,7 @@ import {
   MessageSquare, Footprints, ChevronLeft, ChevronRight,
   Music, Bell, Zap, Activity
 } from 'lucide-react';
-import { evaluate } from 'mathjs';
+import { evaluate, compile } from 'mathjs';
 import PlotViewer from './PlotViewer';
 import engine from './AudioEngine';
 import { analyzeFunction, classifyPoint, describeGraph, evalAt, getRHS } from './GraphAnalyzer';
@@ -541,35 +541,10 @@ function App() {
   }, [activeFuncId, isListening]);
 
   // ======================== Playback Loop ========================
-  function computeDerivative(rhs, x, h = 0.01) {
-    try {
-      const yP = evaluate(rhs, { x: x + h });
-      const yM = evaluate(rhs, { x: x - h });
-      if (Number.isFinite(yP) && Number.isFinite(yM)) return (yP - yM) / (2 * h);
-    } catch {}
-    return undefined;
-  }
+  const compiledFunctionsRef = useRef([]);
 
-  const lastTimeRef = useRef(performance.now());
-
-  const stepAudio = useCallback(() => {
-    if (!isPlayingRef.current) return;
-
-    const now = performance.now();
-    const dt = (now - lastTimeRef.current) / 1000;
-    lastTimeRef.current = now;
-
-    // Step equivalent to the old 100ms pacing, but using smooth real time
-    progressRef.current += (dt / 0.1) * playbackSpeed;
-    if (progressRef.current > 100) progressRef.current = 0;
-    setProgress(progressRef.current);
-
-    const r = effectiveRangeRef.current;
-    const range = r.max - r.min;
-    const t = r.min + (range * progressRef.current / 100);
-
-    const yVals = {}, derivVals = {};
-    functionsRef.current.forEach(f => {
+  useEffect(() => {
+    compiledFunctionsRef.current = functions.map(f => {
       let lhs = 'y', rhs = f.expr;
       if (f.expr.includes('=')) {
         const parts = f.expr.split('=');
@@ -577,52 +552,89 @@ function App() {
         rhs = parts[1].trim();
       }
       try {
-        let val = lhs === 'x' ? evaluate(rhs, { y: t }) : evaluate(rhs, { x: t, y: 0 });
-        if (Number.isFinite(val)) {
-          yVals[f.id] = val;
-          const d = computeDerivative(rhs, t);
-          if (d !== undefined) derivVals[f.id] = d;
-        }
-      } catch {}
-    });
-
-    // Intersection detection
-    const ids = Object.keys(yVals);
-    if (ids.length > 1) {
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          if (Math.abs(yVals[ids[i]] - yVals[ids[j]]) < 0.3) {
-            engine.playIntersection();
-            break;
+        const compiled = compile(rhs);
+        return {
+          id: f.id,
+          lhs,
+          rhs, // store for classification
+          evaluate: (val) => {
+            try {
+              const scope = lhs === 'x' ? { y: val } : { x: val };
+              const result = compiled.evaluate(scope);
+              return typeof result === 'number' && Number.isFinite(result) ? result : NaN;
+            } catch {
+              return NaN;
+            }
           }
-        }
-      }
-    }
-
-    functionsRef.current.forEach(f => {
-      const rhs = getRHS(f.expr);
-      const pt = classifyPoint(rhs, t, 0.2);
-      if (pt !== 'regular') {
-        engine.playLandmark(pt);
+        };
+      } catch {
+        return { id: f.id, lhs, rhs, evaluate: () => NaN };
       }
     });
-
-    const scheduleTime = engine.now() + 0.05; // 50ms lookahead
-    engine.playFrame(yVals, derivVals, "16n", t, r.min, r.max, scheduleTime);
-
-    timeoutRef.current = requestAnimationFrame(stepAudio);
-  }, [playbackSpeed]);
+  }, [functions]);
 
   useEffect(() => {
     if (isPlaying) {
-      lastTimeRef.current = performance.now();
-      engine.init().then(() => stepAudio());
+      engine.init().then(() => {
+        engine.startPlayback((time) => {
+          // This callback fires tightly on the AudioContext clock (every 0.1s usually)
+          // 10 seconds default sweep duration for normal speed
+          const tickDelta = 0.1;
+          const sweepDuration = 10; 
+          progressRef.current += (tickDelta / sweepDuration) * playbackSpeed * 100;
+          if (progressRef.current > 100) progressRef.current = 0;
+
+          // Defer the React UI render to match the exact moment the sound hits
+          engine.Tone?.Draw?.schedule?.(() => {
+            setProgress(progressRef.current);
+          }, time);
+
+          const r = effectiveRangeRef.current;
+          const range = r.max - r.min;
+          const t = r.min + (range * progressRef.current / 100);
+
+          const yVals = {}, derivVals = {};
+          compiledFunctionsRef.current.forEach(cf => {
+            const val = cf.evaluate(t);
+            if (Number.isFinite(val)) {
+              yVals[cf.id] = val;
+              // manual derivative estimation
+              const valP = cf.evaluate(t + 0.01);
+              const valM = cf.evaluate(t - 0.01);
+              if (Number.isFinite(valP) && Number.isFinite(valM)) {
+                derivVals[cf.id] = (valP - valM) / 0.02;
+              }
+            }
+          });
+
+          // Intersection detection
+          const ids = Object.keys(yVals);
+          if (ids.length > 1) {
+            for (let i = 0; i < ids.length; i++) {
+              for (let j = i + 1; j < ids.length; j++) {
+                if (Math.abs(yVals[ids[i]] - yVals[ids[j]]) < 0.3) {
+                  engine.playIntersection();
+                  break;
+                }
+              }
+            }
+          }
+
+          compiledFunctionsRef.current.forEach(cf => {
+            const pt = classifyPoint(cf.rhs, t, 0.2);
+            if (pt !== 'regular') {
+               engine.playLandmark(pt);
+            }
+          });
+
+          // Send exact scheduling target time to trigger
+          engine.playFrame(yVals, derivVals, "16n", t, r.min, r.max, time);
+        });
+      });
     } else {
-      engine.stop();
-      if (timeoutRef.current) cancelAnimationFrame(timeoutRef.current);
+      engine.stopPlayback();
     }
-    return () => { if (timeoutRef.current) cancelAnimationFrame(timeoutRef.current); };
-  }, [isPlaying, stepAudio]);
+  }, [isPlaying, playbackSpeed]);
 
   // ======================== Function CRUD ========================
   const addFunction = () => {

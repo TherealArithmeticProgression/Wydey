@@ -16,6 +16,7 @@ const OCTAVE_OFFSETS = [0, 12, -12, 7, -7, 5, -5, 3];
 
 class AudioEngine {
   constructor() {
+    this.Tone = Tone;
     this.synths = {};
     this.trackIndex = {};  // maps function id -> track number for octave separation
     this.isInitialized = false;
@@ -100,6 +101,20 @@ class AudioEngine {
 
   now() {
     return Tone.now();
+  }
+
+  startPlayback(callback) {
+    Tone.Transport.cancel();
+    this.playbackEventId = Tone.Transport.scheduleRepeat((time) => {
+      callback(time);
+    }, "0.1"); // Lookahead schedules every 100ms
+    Tone.Transport.start();
+  }
+
+  stopPlayback() {
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+    this.stop();
   }
 
   createInstrument(type) {
