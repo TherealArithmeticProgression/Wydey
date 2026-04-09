@@ -853,7 +853,14 @@ function App() {
                 }}
                 role="button" aria-label={`Select: ${f.expr}`} tabIndex={0}
               >
-                <div className="func-color" style={{ backgroundColor: f.color }} aria-hidden="true" />
+                <input 
+                  type="color" 
+                  className="func-color-input" 
+                  value={f.color} 
+                  onChange={e => updateFunction(f.id, 'color', e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  aria-label={`Choose color for ${f.expr}`}
+                />
                 <div className="func-details">
                   <input
                     className="func-expr-input"

@@ -319,12 +319,25 @@ header {
   box-shadow: 3px 3px 0 var(--black);
 }
 
-.func-color {
-  width: 4px;
-  height: 100%;
-  min-height: 36px;
-  border-radius: 2px;
+.func-color-input {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  cursor: pointer;
   flex-shrink: 0;
+  background-color: transparent;
+  align-self: center;
+}
+
+.func-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.func-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
 }
 
 .func-details {
