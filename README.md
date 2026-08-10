@@ -12,7 +12,7 @@ Wydey is a progressive web application designed to map mathematical functions to
 
 ## Key Features
 - **Dynamic Graphing**: Plot multiple mathematical expressions concurrently in beautiful, high-contrast 2D and 3D spaces using robust mathematical rendering.
-- **Audio Synthesis (Sonification)**: Listen to your equations! The built-in audio engine maps the values of your functions to musical notes and synthesized instruments.
+- **Audio Synthesis**: Listen to your equations! The built-in audio engine maps the values of your functions to musical notes and synthesized instruments.
 - **Audio Recording**: The calculator also acts as a custom sound recorder, allowing users to capture their graphed audio sweeps and download them instantly as high-fidelity `.webm` audio files.
 - **Multisensory Learning**: Engage with functions both visually and aurally for a deeper understanding of mathematical concepts.
 - **Integrated Equation Keyboard**: Built-in math keyboard for fast and easy input of complex functions and trigonometric operations.
